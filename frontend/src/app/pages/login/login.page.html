@@ -1,0 +1,31 @@
+<main class="login">
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Импорт товаров</mat-card-title>
+      <mat-card-subtitle>Вход в панель</mat-card-subtitle>
+    </mat-card-header>
+    @if (submitting()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <mat-card-content>
+        <mat-form-field appearance="outline">
+          <mat-label>Логин</mat-label>
+          <input matInput formControlName="username" autocomplete="username" name="username" />
+          <mat-error>Укажите логин</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Пароль</mat-label>
+          <input matInput type="password" formControlName="password" autocomplete="current-password" name="password" />
+          <mat-error>Укажите пароль</mat-error>
+        </mat-form-field>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-flat-button type="submit" [disabled]="submitting()">Войти</button>
+      </mat-card-actions>
+    </form>
+  </mat-card>
+</main>

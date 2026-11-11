@@ -1,0 +1,86 @@
+<h1>Товары</h1>
+
+<form class="filters" [formGroup]="filters" (ngSubmit)="applyFilters()" novalidate>
+  <mat-form-field appearance="outline" class="name">
+    <mat-label>Название</mat-label>
+    <input matInput formControlName="name" name="name" autocomplete="off" />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Цена от, ₽</mat-label>
+    <input matInput formControlName="priceMin" name="price_min" inputmode="decimal" />
+    <mat-error>Число, до 2 знаков после запятой</mat-error>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Цена до, ₽</mat-label>
+    <input matInput formControlName="priceMax" name="price_max" inputmode="decimal" />
+    <mat-error>Число, до 2 знаков после запятой</mat-error>
+  </mat-form-field>
+  <div class="actions">
+    <button mat-flat-button type="submit">Найти</button>
+    <button mat-button type="button" (click)="resetFilters()">Сбросить</button>
+  </div>
+  @if (filters.hasError('priceRange')) {
+    <p class="error" role="alert">«Цена от» больше, чем «Цена до»</p>
+  }
+</form>
+
+<div class="table-card">
+  @if (loading$ | async) {
+    <mat-progress-bar mode="indeterminate" class="loading" />
+  }
+  @if (error$ | async; as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @let products = (products$ | async) ?? [];
+  <div class="table-wrap">
+    <table mat-table [dataSource]="products" data-testid="products-table">
+      <ng-container matColumnDef="preview">
+        <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Фото</span></th>
+        <td mat-cell *matCellDef="let p">
+          @if (p.previewUrl) {
+            <img [src]="p.previewUrl" alt="" width="48" height="48" loading="lazy" />
+          } @else {
+            <span class="no-image"><mat-icon>image_not_supported</mat-icon></span>
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="externalCode">
+        <th mat-header-cell *matHeaderCellDef>Внешний код</th>
+        <td mat-cell *matCellDef="let p" class="code">{{ p.externalCode }}</td>
+      </ng-container>
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Наименование</th>
+        <td mat-cell *matCellDef="let p">
+          <a [routerLink]="['/products', p.id]" (click)="$event.stopPropagation()">{{ p.name }}</a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="price">
+        <th mat-header-cell *matHeaderCellDef class="num">Цена, ₽</th>
+        <td mat-cell *matCellDef="let p" class="num">{{ p.price | number: '1.2-2' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="discount">
+        <th mat-header-cell *matHeaderCellDef class="num">Скидка</th>
+        <td mat-cell *matCellDef="let p" class="num">{{ p.discount !== null ? (p.discount | number: '1.0-2') + ' %' : '—' }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let p; columns: columns" class="clickable" (click)="open(p.id)"></tr>
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell empty" [attr.colspan]="columns.length">
+          @if (!(loading$ | async)) { Товары не найдены. Измените фильтры или загрузите файл на странице «Импорт». }
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <mat-paginator
+    [length]="(total$ | async) ?? 0"
+    [pageIndex]="query().page - 1"
+    [pageSize]="query().limit"
+    [pageSizeOptions]="pageSizes"
+    [showFirstLastButtons]="((totalPages$ | async) ?? 0) > 2"
+    (page)="onPage($event)"
+    aria-label="Страницы списка товаров"
+  />
+</div>

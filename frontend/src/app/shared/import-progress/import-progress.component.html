@@ -1,0 +1,81 @@
+@if (state$ | async; as state) {
+  @switch (state.kind) {
+    @case ('loading') {
+      <mat-progress-bar mode="indeterminate" />
+    }
+    @case ('error') {
+      <p class="error" role="alert">{{ state.message }}</p>
+    }
+    @case ('ready') {
+      @let job = state.job;
+      <section class="progress" [attr.data-status]="job.status" aria-live="polite">
+        <header>
+          <mat-chip-set>
+            <mat-chip [class]="'status-' + job.status" data-testid="import-status">{{ statusLabels[job.status] }}</mat-chip>
+          </mat-chip-set>
+          <span class="filename">{{ job.filename }}</span>
+          <span class="percent" data-testid="import-percent">{{ job.progress }}%</span>
+        </header>
+
+        <mat-progress-bar
+          [mode]="job.status === 'queued' ? 'query' : 'determinate'"
+          [value]="job.progress"
+          [color]="job.status === 'failed' ? 'warn' : 'primary'"
+        />
+
+        <dl class="counters">
+          <div><dt>Строк</dt><dd>{{ job.processedRows }} / {{ job.totalRows ?? '—' }}</dd></div>
+          <div><dt>Создано</dt><dd data-testid="import-created">{{ job.createdCount }}</dd></div>
+          <div><dt>Обновлено</dt><dd data-testid="import-updated">{{ job.updatedCount }}</dd></div>
+          <div><dt>С ошибками</dt><dd data-testid="import-failed">{{ job.failedCount }}</dd></div>
+          @if (job.finishedAt) {
+            <div><dt>Завершён</dt><dd>{{ job.finishedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</dd></div>
+          }
+        </dl>
+
+        @if (job.failureReason) {
+          <p class="error" role="alert">{{ job.failureReason }}</p>
+        }
+
+        @if (showReport() && job.issues.length > 0) {
+          <h3>Отчёт об ошибках</h3>
+          @if (job.issuesTruncated) {
+            <p class="hint">Показаны первые {{ job.issues.length }} записей.</p>
+          }
+          <div class="table-wrap">
+            <table mat-table [dataSource]="job.issues" data-testid="import-report">
+              <ng-container matColumnDef="row">
+                <th mat-header-cell *matHeaderCellDef>Строка</th>
+                <td mat-cell *matCellDef="let issue">{{ issue.row }}</td>
+              </ng-container>
+              <ng-container matColumnDef="severity">
+                <th mat-header-cell *matHeaderCellDef>Тип</th>
+                <td mat-cell *matCellDef="let issue">
+                  <mat-icon [class]="issue.severity" [attr.aria-label]="issue.severity === 'error' ? 'Ошибка' : 'Предупреждение'">
+                    {{ issue.severity === 'error' ? 'error' : 'warning' }}
+                  </mat-icon>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="field">
+                <th mat-header-cell *matHeaderCellDef>Колонка</th>
+                <td mat-cell *matCellDef="let issue">{{ issue.field ?? '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="externalCode">
+                <th mat-header-cell *matHeaderCellDef>Внешний код</th>
+                <td mat-cell *matCellDef="let issue">{{ issue.externalCode ?? '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="message">
+                <th mat-header-cell *matHeaderCellDef>Сообщение</th>
+                <td mat-cell *matCellDef="let issue">{{ issue.message }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="issueColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: issueColumns"></tr>
+            </table>
+          </div>
+        } @else if (job.status === 'completed' && job.issues.length === 0) {
+          <p class="hint">Все строки импортированы без ошибок.</p>
+        }
+      </section>
+    }
+  }
+}

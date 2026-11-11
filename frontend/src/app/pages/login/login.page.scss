@@ -1,0 +1,4 @@
+.login { min-height: 100dvh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; }
+mat-card { width: min(400px, 100%); }
+mat-card-content { display: grid; gap: 4px; padding-top: 16px; }
+.error { color: var(--mat-sys-error); margin: 0; }

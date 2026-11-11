@@ -1,0 +1,93 @@
+<a mat-button routerLink="/products" class="back"><mat-icon>arrow_back</mat-icon> К списку</a>
+
+@if (state$ | async; as state) {
+  @switch (state.kind) {
+    @case ('loading') {
+      <mat-progress-bar mode="indeterminate" />
+    }
+    @case ('not-found') {
+      <p class="hint">Товар не найден. Возможно, он был удалён.</p>
+    }
+    @case ('error') {
+      <p class="error" role="alert">{{ state.message }}</p>
+    }
+    @case ('ready') {
+      @let product = state.product;
+      <article class="layout">
+        <mat-card appearance="outlined" class="main">
+          <mat-card-header>
+            <mat-card-title data-testid="product-name">{{ product.name }}</mat-card-title>
+            <mat-card-subtitle class="code">{{ product.externalCode }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="price">
+              <span class="value">{{ product.price | number: '1.2-2' }} ₽</span>
+              @if (product.discount !== null) {
+                <span class="discount" title="(Цена продажи − Закупочная цена) / Цена продажи × 100">
+                  Скидка {{ product.discount | number: '1.0-2' }} %
+                </span>
+              }
+            </div>
+            @if (product.description) {
+              <p class="description">{{ product.description }}</p>
+            }
+            <dl class="meta">
+              <div><dt>Добавлен</dt><dd>{{ product.createdAt | date: 'dd.MM.yyyy HH:mm' }}</dd></div>
+              <div><dt>Обновлён</dt><dd>{{ product.updatedAt | date: 'dd.MM.yyyy HH:mm' }}</dd></div>
+            </dl>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="attributes">
+          <mat-card-header><mat-card-title>Характеристики</mat-card-title></mat-card-header>
+          <mat-card-content>
+            @if (product.attributes.length > 0) {
+              <dl class="attrs" data-testid="product-attributes">
+                @for (attribute of product.attributes; track attribute.id) {
+                  <div><dt>{{ attribute.key }}</dt><dd>{{ attribute.value }}</dd></div>
+                }
+              </dl>
+            } @else {
+              <p class="hint">Дополнительных характеристик нет.</p>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="images">
+          <mat-card-header><mat-card-title>Изображения</mat-card-title></mat-card-header>
+          <mat-card-content>
+            @if (product.images.length > 0) {
+              <ul class="gallery" data-testid="product-images">
+                @for (image of product.images; track image.id) {
+                  <li>
+                    @if (image.publicUrl) {
+                      <a [href]="image.publicUrl" target="_blank" rel="noopener">
+                        <img [src]="image.publicUrl" [alt]="product.name" loading="lazy" />
+                      </a>
+                    } @else {
+                      <div class="missing" [title]="image.url">
+                        <mat-icon>broken_image</mat-icon>
+                        <span>Не удалось скачать</span>
+                      </div>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="hint">Изображений нет.</p>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        @if (product.lastImportId; as importId) {
+          <mat-card appearance="outlined" class="import">
+            <mat-card-header><mat-card-title>Последний импорт</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <app-import-progress [importId]="importId" />
+            </mat-card-content>
+          </mat-card>
+        }
+      </article>
+    }
+  }
+}

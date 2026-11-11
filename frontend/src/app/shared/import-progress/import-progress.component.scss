@@ -1,0 +1,17 @@
+:host { display: block; }
+.progress { display: grid; gap: 12px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.filename { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mat-sys-on-surface-variant); }
+.percent { font: var(--mat-sys-title-medium); font-variant-numeric: tabular-nums; }
+.counters { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; }
+.counters div { display: flex; flex-direction: column; }
+.counters dt { font: var(--mat-sys-label-small); color: var(--mat-sys-on-surface-variant); }
+.counters dd { margin: 0; font: var(--mat-sys-title-small); font-variant-numeric: tabular-nums; }
+.status-completed { --mat-chip-elevated-container-color: var(--mat-sys-primary-container); }
+.status-failed { --mat-chip-elevated-container-color: var(--mat-sys-error-container); }
+.error { color: var(--mat-sys-error); margin: 0; }
+.hint { color: var(--mat-sys-on-surface-variant); margin: 0; }
+h3 { font: var(--mat-sys-title-small); margin: 8px 0 0; }
+.table-wrap { overflow-x: auto; max-height: 420px; }
+mat-icon.error { color: var(--mat-sys-error); }
+mat-icon.warning { color: #b26a00; }

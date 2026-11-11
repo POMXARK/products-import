@@ -1,0 +1,18 @@
+:host { display: grid; gap: 16px; }
+h1 { margin: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 0 12px; align-items: flex-start; }
+.filters .name { flex: 1 1 260px; }
+.filters mat-form-field:not(.name) { flex: 0 1 160px; }
+.actions { display: flex; gap: 8px; padding-top: 10px; }
+.error { color: var(--mat-sys-error); margin: 0; flex-basis: 100%; padding: 0 16px; }
+.table-card { position: relative; border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px; overflow: hidden; }
+.loading { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
+.table-wrap { overflow-x: auto; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; white-space: nowrap; }
+img { display: block; width: 48px; height: 48px; object-fit: cover; border-radius: 8px; }
+.no-image { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 8px; background: var(--mat-sys-surface-container); color: var(--mat-sys-on-surface-variant); }
+.clickable { cursor: pointer; }
+.clickable:hover { background: var(--mat-sys-surface-container-high); }
+a { color: inherit; font-weight: 500; }
+.empty { padding: 32px 16px; text-align: center; color: var(--mat-sys-on-surface-variant); }

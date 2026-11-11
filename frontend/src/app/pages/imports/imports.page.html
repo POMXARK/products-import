@@ -1,0 +1,79 @@
+<h1>Импорт товаров</h1>
+
+@let upload = upload$ | async;
+
+<mat-card appearance="outlined">
+  <mat-card-content class="upload">
+    <p class="hint">
+      Файл .xlsx до 10 МБ. Обязательные колонки: «Внешний код», «Наименование», «Цена: Цена продажи».
+      Повторная загрузка обновляет товары по внешнему коду, дубликаты не создаются.
+    </p>
+    <div class="row">
+      <input #fileInput type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden (change)="onFileSelected($event)" data-testid="file-input" />
+      <button mat-stroked-button type="button" (click)="fileInput.click()">
+        <mat-icon>attach_file</mat-icon> Выбрать файл
+      </button>
+      <span class="filename">{{ selectedFile()?.name ?? 'Файл не выбран' }}</span>
+      <button mat-flat-button type="button" [disabled]="selectedFile() === null || upload?.kind === 'uploading'" (click)="submit()" data-testid="upload-button">
+        <mat-icon>upload</mat-icon> Загрузить
+      </button>
+    </div>
+    @if (upload?.kind === 'uploading') {
+      <mat-progress-bar mode="indeterminate" />
+    }
+    @if (fileError(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+    @if (upload && upload.kind === 'error') {
+      <p class="error" role="alert">{{ upload.message }}</p>
+    }
+  </mat-card-content>
+</mat-card>
+
+@if (activeImportId(); as importId) {
+  <mat-card appearance="outlined">
+    <mat-card-header><mat-card-title>Ход импорта</mat-card-title></mat-card-header>
+    <mat-card-content>
+      <app-import-progress [importId]="importId" (finished)="onFinished()" />
+    </mat-card-content>
+  </mat-card>
+}
+
+<h2>История загрузок</h2>
+@if (history$ | async; as history) {
+  @if (history.length === 0) {
+    <p class="hint">Импортов ещё не было.</p>
+  } @else {
+    <div class="table-wrap">
+      <table mat-table [dataSource]="history">
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Загружен</th>
+          <td mat-cell *matCellDef="let job">{{ job.createdAt | date: 'dd.MM.yyyy HH:mm' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="filename">
+          <th mat-header-cell *matHeaderCellDef>Файл</th>
+          <td mat-cell *matCellDef="let job">{{ job.filename }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Статус</th>
+          <td mat-cell *matCellDef="let job">{{ statusLabel(job) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="createdCount">
+          <th mat-header-cell *matHeaderCellDef class="num">Создано</th>
+          <td mat-cell *matCellDef="let job" class="num">{{ job.createdCount }}</td>
+        </ng-container>
+        <ng-container matColumnDef="updatedCount">
+          <th mat-header-cell *matHeaderCellDef class="num">Обновлено</th>
+          <td mat-cell *matCellDef="let job" class="num">{{ job.updatedCount }}</td>
+        </ng-container>
+        <ng-container matColumnDef="failedCount">
+          <th mat-header-cell *matHeaderCellDef class="num">Ошибок</th>
+          <td mat-cell *matCellDef="let job" class="num">{{ job.failedCount }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+        <tr mat-row *matRowDef="let job; columns: historyColumns" class="clickable" [class.selected]="job.id === activeImportId()"
+            tabindex="0" (click)="select(job)" (keydown.enter)="select(job)"></tr>
+      </table>
+    </div>
+  }
+}

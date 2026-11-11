@@ -1,0 +1,11 @@
+:host { display: grid; gap: 16px; }
+h1, h2 { margin: 0; }
+.upload { display: grid; gap: 12px; }
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.filename { flex: 1; min-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hint { color: var(--mat-sys-on-surface-variant); margin: 0; }
+.error { color: var(--mat-sys-error); margin: 0; }
+.table-wrap { overflow-x: auto; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.clickable { cursor: pointer; }
+.clickable:hover, .selected { background: var(--mat-sys-surface-container-high); }
