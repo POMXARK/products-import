@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory="var/cache/phpunit"
+         failOnRisky="true"
+         failOnWarning="true"
+         beStrictAboutOutputDuringTests="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="e2e">
+            <directory>tests/E2E</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="test" force="true"/>
+        <env name="JWT_SECRET" value="test-secret-that-is-long-enough-for-hs256!!"/>
+        <env name="DATABASE_URL" value="postgresql://app:app@db:5432/products_test"/>
+        <env name="MESSENGER_TRANSPORT_DSN" value="in-memory://" force="true"/>
+        <env name="MESSENGER_FAILED_TRANSPORT_DSN" value="in-memory://" force="true"/>
+        <env name="IMPORT_RATE_LIMIT" value="3" force="true"/>
+        <env name="LOG_LEVEL" value="error" force="true"/>
+    </php>
+</phpunit>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <entity name="App\Domain\Product\ProductAttribute" table="product_attributes">
+        <unique-constraints>
+            <unique-constraint name="uniq_product_attributes_product_key" columns="product_id,key"/>
+        </unique-constraints>
+        <id name="id" type="integer"><generator strategy="IDENTITY"/></id>
+        <field name="key" column="`key`" length="255"/>
+        <field name="value" type="text"/>
+        <many-to-one field="product" target-entity="App\Domain\Product\Product" inversed-by="attributes">
+            <join-column name="product_id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+    </entity>
+</doctrine-mapping>

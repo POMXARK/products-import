@@ -1,0 +1,305 @@
+openapi: 3.1.0
+info:
+  title: Products Import API
+  version: 1.0.0
+  description: |
+    Импорт товаров из XLSX (асинхронно через RabbitMQ), список товаров с серверной пагинацией и фильтрами,
+    карточка товара с атрибутами и изображениями. Все ошибки отдаются в формате RFC 7807 (application/problem+json).
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: system
+  - name: auth
+  - name: products
+  - name: imports
+paths:
+  /api/health:
+    get:
+      tags: [system]
+      summary: Проверка доступности приложения и БД
+      security: []
+      responses:
+        '200':
+          description: Приложение и БД доступны
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: БД недоступна
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Вход, выдача JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, example: admin }
+                password: { type: string, format: password, example: admin12345 }
+      responses:
+        '200':
+          description: Токен выдан
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, tokenType, expiresAt]
+                properties:
+                  token: { type: string }
+                  tokenType: { type: string, const: Bearer }
+                  expiresAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /api/openapi.yaml:
+    get:
+      tags: [system]
+      summary: Эта спецификация
+      security: []
+      responses:
+        '200':
+          description: OpenAPI в YAML
+          content:
+            application/yaml: {}
+  /api/docs:
+    get:
+      tags: [system]
+      summary: Swagger UI
+      security: []
+      responses:
+        '200':
+          description: HTML-страница Swagger UI
+          content:
+            text/html: {}
+  /api/products:
+    get:
+      tags: [products]
+      summary: Список товаров с пагинацией и фильтрами
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: name, in: query, description: Подстрока названия без учёта регистра, schema: { type: string, maxLength: 200 } }
+        - { name: price_min, in: query, schema: { type: string, example: '1000.00' } }
+        - { name: price_max, in: query, schema: { type: string, example: '5000.00' } }
+      responses:
+        '200':
+          description: Страница товаров
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, meta]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProductSummary' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /api/products/{id}:
+    get:
+      tags: [products]
+      summary: Карточка товара
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Товар с атрибутами и изображениями
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/imports:
+    get:
+      tags: [imports]
+      summary: Последние импорты
+      responses:
+        '200':
+          description: До 20 последних импортов (без отчёта по строкам)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ImportJobSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [imports]
+      summary: Загрузить XLSX и поставить импорт в очередь
+      description: |
+        Файл проверяется по размеру, расширению, MIME и сигнатуре ZIP. Обработка идёт в воркере;
+        статус и отчёт берутся из GET /api/imports/{id}. Ограничено по частоте на пользователя.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '202':
+          description: Импорт поставлен в очередь
+          headers:
+            Location: { schema: { type: string }, description: URL статуса импорта }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429':
+          description: Превышен лимит загрузок
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /api/imports/{id}:
+    get:
+      tags: [imports]
+      summary: Статус, прогресс и отчёт импорта
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Состояние импорта
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Unauthorized:
+      description: Нет токена, токен истёк или неверный логин/пароль
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Не найдено
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationFailed:
+      description: Ошибки валидации по полям
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors:
+          type: object
+          additionalProperties: { type: string }
+    Health:
+      type: object
+      required: [status, checks]
+      properties:
+        status: { type: string, enum: [ok, fail] }
+        checks:
+          type: object
+          additionalProperties: { type: string, enum: [ok, fail] }
+    PageMeta:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    ProductSummary:
+      type: object
+      required: [id, externalCode, name, price, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        externalCode: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        price: { type: string, description: Цена продажи, десятичная строка, example: '1320.00' }
+        discount: { type: [string, 'null'], description: '(продажа - закупка) / продажа * 100, в процентах', example: '33.33' }
+        previewUrl: { type: [string, 'null'] }
+        lastImportId: { type: [string, 'null'], format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductSummary'
+        - type: object
+          required: [attributes, images]
+          properties:
+            attributes:
+              type: array
+              items:
+                type: object
+                required: [key, value]
+                properties:
+                  id: { type: integer }
+                  key: { type: string }
+                  value: { type: string }
+            images:
+              type: array
+              items:
+                type: object
+                required: [url]
+                properties:
+                  id: { type: integer }
+                  url: { type: string, description: Исходная ссылка из файла }
+                  path: { type: [string, 'null'], description: Путь скачанного файла в хранилище }
+                  publicUrl: { type: [string, 'null'] }
+    ImportJobSummary:
+      type: object
+      required: [id, status, filename, progress, processedRows, createdCount, updatedCount, failedCount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [queued, processing, completed, failed] }
+        filename: { type: string }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        totalRows: { type: [integer, 'null'] }
+        processedRows: { type: integer }
+        createdCount: { type: integer }
+        updatedCount: { type: integer }
+        failedCount: { type: integer }
+        failureReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, 'null'], format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+    ImportJob:
+      allOf:
+        - $ref: '#/components/schemas/ImportJobSummary'
+        - type: object
+          required: [issues, issuesTruncated]
+          properties:
+            issues:
+              type: array
+              items:
+                type: object
+                required: [row, severity, message]
+                properties:
+                  row: { type: integer, description: Номер строки в файле }
+                  severity: { type: string, enum: [error, warning] }
+                  message: { type: string }
+                  externalCode: { type: [string, 'null'] }
+                  field: { type: [string, 'null'] }
+            issuesTruncated: { type: boolean, description: Отчёт обрезан до 1000 записей }

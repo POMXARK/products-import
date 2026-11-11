@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use App\Entrypoint\Console\CreateUserCommand;
+use App\Entrypoint\Console\LoadFixturesCommand;
+use App\Infrastructure\Messenger\ArrayLocator;
+use App\Infrastructure\Persistence\Doctrine\EntityManagerProvider;
+use Doctrine\Migrations\Configuration\EntityManager\ExistingEntityManager;
+use Doctrine\Migrations\Configuration\Migration\ConfigurationArray;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\Tools\Console\ConsoleRunner as MigrationsRunner;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Console\Application;
+use Symfony\Component\Messenger\Command\ConsumeMessagesCommand;
+use Symfony\Component\Messenger\Command\SetupTransportsCommand;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\RoutableMessageBus;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+
+$container = (require __DIR__.'/../config/bootstrap.php')();
+
+$console = new Application('products-import', '1.0.0');
+
+// Миграции Doctrine: migrations:migrate, migrations:status и т.д.
+$dependencyFactory = DependencyFactory::fromEntityManager(
+    new ConfigurationArray([
+        'migrations_paths' => ['Migrations' => __DIR__.'/../migrations'],
+        'table_storage' => ['table_name' => 'doctrine_migration_versions'],
+        'transactional' => true,
+    ]),
+    new ExistingEntityManager($container->get(EntityManagerProvider::class)->get()),
+);
+MigrationsRunner::addCommands($console, $dependencyFactory);
+
+// Воркер очереди импорта: bin/console messenger:consume async
+$transports = $container->get('messenger.transports');
+$console->add(new ConsumeMessagesCommand(
+    new RoutableMessageBus(new ArrayLocator(['default' => $container->get(MessageBusInterface::class)]), $container->get(MessageBusInterface::class)),
+    $transports,
+    $container->get(EventDispatcherInterface::class),
+    $container->get(LoggerInterface::class),
+    ['async'],
+));
+$console->add(new SetupTransportsCommand($transports, ['async', 'failed']));
+
+$console->add($container->get(LoadFixturesCommand::class));
+$console->add($container->get(CreateUserCommand::class));
+
+exit($console->run());

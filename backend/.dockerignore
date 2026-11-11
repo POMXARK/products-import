@@ -1,0 +1,5 @@
+vendor
+var
+storage
+.env
+.phpunit.result.cache

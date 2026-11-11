@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <entity name="App\Domain\Product\ProductImage" table="product_images">
+        <unique-constraints>
+            <unique-constraint name="uniq_product_images_product_url" columns="product_id,url"/>
+        </unique-constraints>
+        <id name="id" type="integer"><generator strategy="IDENTITY"/></id>
+        <field name="url" length="2048"/>
+        <field name="path" length="512" nullable="true"/>
+        <field name="position" type="smallint"/>
+        <many-to-one field="product" target-entity="App\Domain\Product\Product" inversed-by="images">
+            <join-column name="product_id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+    </entity>
+</doctrine-mapping>
