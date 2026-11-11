@@ -1,0 +1,10 @@
+**/node_modules
+**/vendor
+**/var
+frontend/dist
+frontend/.angular
+frontend/playwright-report
+frontend/test-results
+backend/storage
+.git
+.env

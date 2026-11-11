@@ -1,0 +1,14 @@
+.env
+.idea/
+.vscode/
+backend/vendor/
+backend/var/
+backend/storage/
+backend/.phpunit.cache/
+backend/.php-cs-fixer.cache
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/playwright-report/
+frontend/test-results/
+frontend/coverage/

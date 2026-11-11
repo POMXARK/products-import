@@ -1,0 +1,113 @@
+name: products-import
+
+x-backend: &backend
+  build:
+    context: ./backend
+    target: prod
+  image: products-import-backend:latest
+  env_file: .env
+  environment:
+    STORAGE_PATH: /app/storage
+  volumes:
+    - storage:/app/storage
+  restart: unless-stopped
+
+services:
+  app:
+    <<: *backend
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # Воркер импорта читает очередь RabbitMQ; --time-limit/--memory-limit перезапускают процесс, чтобы не копить память.
+  worker:
+    <<: *backend
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M", "-vv"]
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    deploy:
+      replicas: 2
+
+  # Одноразовый контейнер: миграции, объявление очередей и учётка для входа до старта app и worker.
+  migrate:
+    <<: *backend
+    command: ["sh", "-c", "php bin/console migrations:migrate --no-interaction --allow-no-migration && php bin/console messenger:setup-transports && php bin/console app:user:create \"$$ADMIN_USERNAME\" \"$$ADMIN_PASSWORD\""]
+    healthcheck:
+      disable: true
+    restart: "no"
+    depends_on:
+      db: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: products-import-web:latest
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - storage:/srv/storage:ro
+    depends_on:
+      app: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-products}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+
+  # Окружение для тестов, линтеров и PHPStan (make test / make lint / make phpstan).
+  backend-dev:
+    build:
+      context: ./backend
+      target: dev
+    image: products-import-backend:dev
+    profiles: ["dev"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/products_test?serverVersion=16&charset=utf8
+      JWT_SECRET: test-secret-that-is-long-enough-for-hs256!!
+      STORAGE_PATH: /tmp/storage
+    volumes:
+      - ./backend:/app
+      - /app/vendor
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  rabbitmq:
+  storage:
